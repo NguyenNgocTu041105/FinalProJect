@@ -19,33 +19,46 @@ from .models import Product
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
-@login_required(login_url='login')
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from .serializers import CategorySerializer,BrandSerializer,ProductSerializer
+
+@api_view(['GET'])
+def get_form_data(request):
+    categories=Category.objects.all()
+    brands=Brand.objects.all()
+    serializer_category=CategorySerializer(categories,many=True)
+    serializer_brand=BrandSerializer(brands,many=True)
+    return Response({'categories':serializer_category.data,'brands':serializer_brand.data})
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def add_product(request):
-    if request.method=='POST':
-        name=request.POST.get('name')
-        price=request.POST.get('price')
-        category=request.POST.get('id_category')
-        brand=request.POST.get('id_brand')
-        status=request.POST.get('state')
-        sale_percentage=request.POST.get('sale_percentage')
-        company_profile=request.POST.get('company_profile')
-        images=request.FILES.getlist('image')
-        description=request.POST.get('description')
+    name=request.data.get('name')
+    price=request.data.get('price')
+    category=request.data.get('id_category')
+    brand=request.data.get('id_brand')
+    status=request.data.get('state')
+    sale_percentage=request.data.get('sale_percentage')
+    company_profile=request.data.get('company_profile')
+    images=request.FILES.getlist('image')
+    description=request.data.get('description')
         
-        errors={}
-        if not name:
-            errors['name']='Tên sản phẩm không được để trống'
-        if not price:
-            errors['price']='Giá sản phẩm không được để trống'
-        else :
-            try:
-                price=float(price)
-                if price < 0 :
-                    errors['price'] = 'Giá phải là số dương'
-            except ValueError:
-                errors['price'] = 'Giá không hợp lệ'
-        if not category:
-            errors['category']='Danh mục sản phẩm không được để trống'
+    errors={}
+    if not name:
+        errors['name']='Tên sản phẩm không được để trống'
+    if not price:
+        errors['price']='Giá sản phẩm không được để trống'
+    else :
+        try:
+            price=float(price)
+            if price < 0 :
+                errors['price'] = 'Giá phải là số dương'
+        except ValueError:
+            errors['price'] = 'Giá không hợp lệ'
+    if not category:
+        errors['category']='Danh mục sản phẩm không được để trống'
         if not brand:
             errors['brand']='Thương hiệu sản phẩm không được để trống'
         if not status:
@@ -114,16 +127,22 @@ def add_product(request):
                 images=save_imagenames
             )
                 
-        return JsonResponse({'status': 'success', 'message': 'Thành công!'})
+        return Response({'status': 'success', 'message': 'Thành công!'},status=status.HTTP_201_CREATED)
 
-    categories= Category.objects.all()
-    brands= Brand.objects.all()
-    return render(request,'product/add_product.html',{'categories':categories,'brands':brands})
-
-@login_required(login_url='login')
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def my_products(request):
     products = Product.objects.filter(id_user=request.user).order_by('-id')
-    return render(request, 'product/my-product.html', {'products': products})
+    serializer=ProductSerializer(products,many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+def product_detail(request,id):
+    product=get_object_or_404(Product,id=id)
+    recommended_products=Product.objects.all()[:6]
+    serializer=ProductSerializer(product)
+    return Response(serializer.data)
 
 @login_required(login_url='login')
 def edit_product(request, id):
@@ -239,10 +258,6 @@ def delete_product(request,id):
     product.delete()
     return redirect('my_products')     
 
-def product_detail(request,id):
-    product=Product.objects.get(id=id)
-    recommended_products=Product.objects.all()[:6]
-    return render(request,'product/product-details.html',{'product':product,'recommended_products':recommended_products})
 
 
 def add_to_cart(request,id):

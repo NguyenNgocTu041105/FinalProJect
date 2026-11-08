@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'django_ckeditor_5',
     'blog',
     'product',
+    'rest_framework',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -167,3 +169,5 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # cài đặt thời gian hết hạn cho token trong email
 PASSWORD_RESET_TIMEOUT = 900
+
+
